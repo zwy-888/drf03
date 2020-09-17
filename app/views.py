@@ -61,7 +61,7 @@ class BookAPIViewV2(APIView):
         """
         book_id = kwargs.get('id')
         if book_id:
-            # 查询单个图书
+            # 查询单个图书`-
             book_obj = Book.objects.get(pk=book_id)
             data = BookModelSerializerV2(book_obj).data
             return Response({
@@ -123,6 +123,7 @@ class BookAPIViewV2(APIView):
 
         # 判断传递过来的图书的id是否在数据库中  且还未删除
         response = Book.objects.filter(pk__in=ids, is_delete=False).update(is_delete=True)
+        # 查到他并把他的删除状态更新为true
         print(response)
         if response:
             return Response({
@@ -134,65 +135,124 @@ class BookAPIViewV2(APIView):
             "message": "删除失败或者图书不存在",
         })
 
-    def put(self, request, *args, **kwargs):
-        """
-        整体修改单个：修改一个对象的全部字段
-        :return 修改后的对象
-        """
-        # 修改的参数
-        request_data = request.data
-        # 要修改的图书的id
-        book_id = kwargs.get("id")
-
-        try:
-            book_obj = Book.objects.get(pk=book_id)
-        except:
-            return Response({
-                "status": status.HTTP_400_BAD_REQUEST,
-                "message": "图书不存在",
-            })
-
-        # 前端发送的修改的值需要做安全校验
-        # 更新参数的时候使用序列化器完成数据的校验
-        # TODO 如果当前要修改某个对象则需要通过instance来指定你要修改的对象
-        book_ser = BookModelSerializerV2(data=request_data, instance=book_obj)
-        book_ser.is_valid(raise_exception=True)
-        save = book_ser.save()
-
-        return Response({
-            "status": 200,
-            "message": "更新成功",
-            "results": BookModelSerializerV2(save).data
-        })
+    # def put(self, request, *args, **kwargs):
+    #     """
+    #     整体修改单个：修改一个对象的全部字段
+    #     :return 修改后的对象
+    #     """
+    #     # 修改的参数
+    #     request_data = request.data
+    #     # 要修改的图书的id
+    #     book_id = kwargs.get("id")
+    #
+    #     try:
+    #         book_obj = Book.objects.get(pk=book_id)
+    #         # 查到数据
+    #     except:
+    #         return Response({
+    #             "status": status.HTTP_400_BAD_REQUEST,
+    #             "message": "图书不存在",
+    #         })
+    #
+    #     # 前端发送的修改的值需要做安全校验
+    #     # 更新参数的时候使用序列化器完成数据的校验
+    #     # TODO 如果当前要修改某个对象则需要通过instance来指定你要修改的对象
+    #     # 查到数据放进序列化器并发返回序列化后的数据  ，通过instance指定要修改的对象
+    #     book_ser = BookModelSerializerV2(data=request_data, instance=book_obj)
+    #     book_ser.is_valid(raise_exception=True)  # 检验校验是否成功
+    #     save = book_ser.save()
+    #
+    #     return Response({
+    #         "status": 200,
+    #         "message": "更新成功",
+    #         "results": BookModelSerializerV2(save).data
+    #     })
+    #
+    # def patch(self, request, *args, **kwargs):
+    #     """
+    #     局部更新
+    #     """
+    #     # 修改的参数
+    #     request_data = request.data
+    #     # 要修改的图书的id
+    #     book_id = kwargs.get("id")
+    #
+    #     try:
+    #         book_obj = Book.objects.get(pk=book_id)
+    #     except:
+    #         return Response({
+    #             "status": status.HTTP_400_BAD_REQUEST,
+    #             "message": "图书不存在",
+    #         })
+    #
+    #     # 前端发送的修改的值需要做安全校验
+    #     # 更新参数的时候使用序列化器完成数据的校验
+    #     # TODO 如果当前要局部修改则需指定 partial = True即可
+    #     book_ser = BookModelSerializerV2(data=request_data, instance=book_obj, partial=True)
+    #     # book_ser 返回序列化器类
+    #     book_ser.is_valid(raise_exception=True)
+    #     save = book_ser.save()  # 使用save方法后将序列化器类转化为model
+    #     print("111", save, type(save))
+    #     print("222", book_ser.save(), type(book_ser.save()))
+    #
+    #     print("333", book_ser, type(book_ser))
+    #
+    #     return Response({
+    #         "status": 200,
+    #         "message": "更新成功",
+    #         "results": BookModelSerializerV2(save).data  # 返回前端再序列化json
+    #     })
 
     def patch(self, request, *args, **kwargs):
-        """
-        局部更新
-        """
-        # 修改的参数
+        book_id = kwargs.get('id')
+        # 路由传递id 如果修改多个就不用传id根据这一点来区分单个修改还是多个修改
         request_data = request.data
-        # 要修改的图书的id
-        book_id = kwargs.get("id")
-
-        try:
-            book_obj = Book.objects.get(pk=book_id)
-        except:
+        # 如果id存在且是字典格式单个修改
+        if book_id and isinstance(request_data, dict):
+            # 为了实现单个修改也改为群改，把book_id放入列表里使格式与群改一样
+            book_ids = [book_id, ]  # []
+            request_data = [request_data]  # [{}]
+        elif not book_id and isinstance(request_data, list):
+            book_ids = []
+            # 将要修改的id 放入到列表book_ids 里
+            # {id：1, book_name: 222}, {id：2, book_name: 111}
+            for dic in request_data:  # 遍历得到的数据从而拿到id
+                pk = dic.pop('id', None)  # 后面写上NONE是为了不报错，报错就不能执行到else
+                if pk:
+                    book_ids.append(pk)
+                else:
+                    return Response({
+                        "status": status.HTTP_400_BAD_REQUEST,
+                        'message': "id不存在",
+                    })
+        else:
             return Response({
                 "status": status.HTTP_400_BAD_REQUEST,
-                "message": "图书不存在",
+                'message': "格式有误",
             })
 
-        # 前端发送的修改的值需要做安全校验
-        # 更新参数的时候使用序列化器完成数据的校验
-        # TODO 如果当前要局部修改则需指定 partial = True即可
-        book_ser = BookModelSerializerV2(data=request_data, instance=book_obj, partial=True)
+        # 对传递过来的id 和 reuest_data进行筛选 看id对应的图书是否存在
+        # 如果id对应的图书不存在将id删除对应的值一并删除
+        # 存在就查询图书进行修改
+
+        book_list = []  # 所有图书对象
+        for pk in book_ids:
+            try:
+                book_obj = Book.objects.get(pk=pk)
+                book_list.append(book_obj)
+            except:
+                # 如果id不存在将id与对应数据删除
+                index = book_ids.index(pk)
+                request_data.pop(index)
+
+                # 参数处理完了进行反序列化将数据保存入库
+        book_ser = BookModelSerializerV2(data=request_data, instance=book_list, partial=True, many=True)
         book_ser.is_valid(raise_exception=True)
-        save = book_ser.save()  # 反序列化为对象
+        book_ser.save()
 
         return Response({
             "status": 200,
-            "message": "更新成功",
-            "results": BookModelSerializerV2(save).data  # 返回前端再序列化json
+            'message': "ok"
         })
 
 
@@ -200,3 +260,12 @@ class BookAPIViewV2(APIView):
 查询单个1  查询所有 1 新增单个  1更新单个1  删除单个 1 局部更新单个1
 群体增加1    群体删除1    群体更新  群体局部更新
 """
+
+# 自恋
+# class BookAPIView1(APIView):
+#     # class Meta:
+#     #     model = Book
+#     #     fields = ("book_name",)
+#     def get(self, reuest, *args, **kwargs):
+#         book_id = kwargs.get("id")
+#

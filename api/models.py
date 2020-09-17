@@ -39,6 +39,21 @@ class Book(BaseModel):
                                 related_name="books", )  # 反向查询的名称
     authors = models.ManyToManyField(to="Author", db_constraint=False, related_name="books")
 
+    def a(self):
+        return 'aa'
+
+    @property  # 使方法作为属性来使用
+    def press_name(self):
+        return self.publish.press_name
+
+    @property
+    def press_address(self):
+        return self.publish.address
+
+    # 多对多有些特殊的处理
+    def authors_list(self):  # detail__phone 可以直接访问到
+        return self.authors.values('author_name', 'detail__phone')
+
     class Meta:
         db_table = "bz_book"
         verbose_name = "图书表"

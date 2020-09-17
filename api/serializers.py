@@ -6,6 +6,7 @@ from api.models import Employee
 
 
 class EmployeeSerializer(serializers.Serializer):
+    print()
     username = serializers.CharField()
     password = serializers.CharField()
     # gender = serializers.IntegerField()
@@ -23,6 +24,7 @@ class EmployeeSerializer(serializers.Serializer):
     # 自定字段在数据库中没有对应值，所以要定义此函数获取对应值
 
     def get_salt(self, obj):
+        print("9999", self)
         return 'salt'
 
     def get_gender(self, obj):
@@ -48,6 +50,7 @@ class EmployeeSerializer(serializers.Serializer):
 # 反序列化不存在自定义字段
 class EmployeeDeSerializer(serializers.Serializer):
     username = serializers.CharField(
+        # 做限制条件
         max_length=8,
         min_length=1,
         # 为规则自定义错误信息
@@ -59,7 +62,8 @@ class EmployeeDeSerializer(serializers.Serializer):
     password = serializers.CharField()
     phone = serializers.CharField(min_length=11, required=True)
     re_pwd = serializers.CharField()
-        # 局部钩子
+
+    # 局部钩子
 
     # 验证单个字段
     # def validate_username(self, values):

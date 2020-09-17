@@ -23,6 +23,7 @@ class EmployeeAPIView(APIView):
             # 使用序列化器完成序列化
             user_obj = Employee.objects.get(pk=user_id)
             emp_ser = EmployeeSerializer(user_obj).data
+            # 跟上data得到一个字典
             # 想序列化谁就把他放进括号内
             # 后面不跟data返回的是一个序列化器类
             return Response({
@@ -41,6 +42,7 @@ class EmployeeAPIView(APIView):
 
     def post(self, request, *args, **kwargs):
         data = request.data
+        # 获取前端数据的方法
         if not isinstance(data, dict) or data == {}:
             return Response('请求格式有误')
 
